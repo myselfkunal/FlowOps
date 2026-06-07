@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package payments;
+
+option go_package = "github.com/myselfkunal/FlowOps/proto/gen/payments";
+
+message ProcessPaymentRequest {
+    float amount = 1;
+}
+
+message ProcessPaymentResponse {
+    bool success = 1;
+}
+
+service PaymentService {
+    rpc ProcessPayment (ProcessPaymentRequest) returns (ProcessPaymentResponse);
+}

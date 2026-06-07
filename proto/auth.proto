@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "github.com/myselfkunal/FlowOps/proto/gen/auth";
+
+message AuthRequest {
+    string auth_token = 1;
+}
+
+message AuthResponse {
+    string user_id = 1;
+    bool success = 2;
+}
+
+service AuthService {
+    rpc Validate (AuthRequest) returns (AuthResponse);
+}
