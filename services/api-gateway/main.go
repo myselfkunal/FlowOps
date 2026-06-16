@@ -1,7 +1,7 @@
 package main
 
 import (
-    "context"
+    //"context"
     "encoding/json"
     "log"
     "net/http"
@@ -9,6 +9,8 @@ import (
     "google.golang.org/grpc/credentials/insecure"
     authpb   "github.com/myselfkunal/FlowOps/proto/gen/auth"
     orderspb "github.com/myselfkunal/FlowOps/proto/gen/orders"
+    "github.com/myselfkunal/FlowOps/shared"
+    "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 type OrderRequest struct {
@@ -30,7 +32,7 @@ func handleOrder(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&req)
     
     // 2. call auth service
-    authRes, err := authClient.Validate(context.Background(), &authpb.AuthRequest{
+    authRes, err := authClient.Validate(r.Context(), &authpb.AuthRequest{
         AuthToken: req.Token,
     })
     if err != nil || !authRes.Success {
@@ -41,7 +43,7 @@ func handleOrder(w http.ResponseWriter, r *http.Request) {
     }
 
     // 3. call orders service
-    orderRes, err := ordersClient.CreateOrder(context.Background(), &orderspb.OrderRequest{
+    orderRes, err := ordersClient.CreateOrder(r.Context(), &orderspb.OrderRequest{
         UserId:   req.UserID,
         ItemName: req.ItemName,
         Amount:   req.Amount,
@@ -62,15 +64,24 @@ func handleOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+    shutdown := shared.InitTracer("api-gateway")
+    defer shutdown()
+    
 	// connect to auth service
-	authConn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	authConn, err := grpc.NewClient("localhost:50051",
+        grpc.WithTransportCredentials(insecure.NewCredentials()),
+        grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+    )
 	if err != nil {
 		log.Fatalf("Failed to connect to auth service: %v", err)
 	}
 	defer authConn.Close()
 
 	// connect to orders service
-	ordersConn, err := grpc.NewClient("localhost:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ordersConn, err := grpc.NewClient("localhost:50052",
+        grpc.WithTransportCredentials(insecure.NewCredentials()),
+        grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+    )
 	if err != nil {
 		log.Fatalf("Failed to connect to orders service: %v", err)
 	}

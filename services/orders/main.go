@@ -11,6 +11,9 @@ import (
 	pb "github.com/myselfkunal/FlowOps/proto/gen/orders"
 	pb2 "github.com/myselfkunal/FlowOps/proto/gen/payments"
 	pb3 "github.com/myselfkunal/FlowOps/proto/gen/notifications"
+    "github.com/myselfkunal/FlowOps/shared"
+    "go.opentelemetry.io/otel"
+    "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 type OrderServer struct {
@@ -20,6 +23,10 @@ type OrderServer struct {
 }
 
 func (s *OrderServer) CreateOrder(ctx context.Context, req *pb.OrderRequest) (*pb.OrderResponse, error) {
+    tracer := otel.Tracer("orders")
+    _, span := tracer.Start(ctx, "CreateOrder")
+    defer span.End()
+    
     // 1. generate order id
     orderID := fmt.Sprintf("order-%d", time.Now().Unix())
 
@@ -45,15 +52,24 @@ func (s *OrderServer) CreateOrder(ctx context.Context, req *pb.OrderRequest) (*p
 }
 
 func main() {
+    shutdown := shared.InitTracer("orders")
+    defer shutdown()
+
 	// connect to payments
-    paymentsConn, err := grpc.NewClient(":50053", grpc.WithTransportCredentials(insecure.NewCredentials()))
+    paymentsConn, err := grpc.NewClient("localhost:50053",
+        grpc.WithTransportCredentials(insecure.NewCredentials()),
+        grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+    )
     if err != nil {
         log.Fatalf("Failed to connect to payments: %v", err)
     }
     defer paymentsConn.Close()
 
     // connect to notifications
-    notifConn, err := grpc.NewClient(":50054", grpc.WithTransportCredentials(insecure.NewCredentials()))
+    notifConn, err := grpc.NewClient("localhost:50054",
+        grpc.WithTransportCredentials(insecure.NewCredentials()),
+        grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+    )
     if err != nil {
         log.Fatalf("Failed to connect to notifications: %v", err)
     }
@@ -75,7 +91,9 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+        grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	)
 
 	pb.RegisterOrderServiceServer(grpcServer, orderServer)
 
