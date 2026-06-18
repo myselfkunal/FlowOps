@@ -1,0 +1,19 @@
+image:
+  pullPolicy: Never
+
+services:
+  payments:
+    image: flowops-payments:latest
+    port: 50053
+  notifications:
+    image: flowops-notifications:latest
+    port: 50054
+  auth:
+    image: flowops-auth:latest
+    port: 50051
+  orders:
+    image: flowops-orders:latest
+    port: 50052
+  gateway:
+    image: flowops-api-gateway:latest
+    port: 8080

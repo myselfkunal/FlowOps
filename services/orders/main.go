@@ -56,7 +56,7 @@ func main() {
     defer shutdown()
 
 	// connect to payments
-    paymentsConn, err := grpc.NewClient("localhost:50053",
+    paymentsConn, err := grpc.NewClient("payments:50053",
         grpc.WithTransportCredentials(insecure.NewCredentials()),
         grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
     )
@@ -66,7 +66,7 @@ func main() {
     defer paymentsConn.Close()
 
     // connect to notifications
-    notifConn, err := grpc.NewClient("localhost:50054",
+    notifConn, err := grpc.NewClient("notifications:50054",
         grpc.WithTransportCredentials(insecure.NewCredentials()),
         grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
     )

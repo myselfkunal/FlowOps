@@ -68,7 +68,7 @@ func main() {
     defer shutdown()
     
 	// connect to auth service
-	authConn, err := grpc.NewClient("localhost:50051",
+	authConn, err := grpc.NewClient("auth:50051",
         grpc.WithTransportCredentials(insecure.NewCredentials()),
         grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
     )
@@ -78,7 +78,7 @@ func main() {
 	defer authConn.Close()
 
 	// connect to orders service
-	ordersConn, err := grpc.NewClient("localhost:50052",
+	ordersConn, err := grpc.NewClient("orders:50052",
         grpc.WithTransportCredentials(insecure.NewCredentials()),
         grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
     )
