@@ -32,7 +32,7 @@ func ParseConfig(rawYAML string) (*FlowOpsConfig, error) {
 // compares config against cluster and applies changes
 func Reconcile(config *FlowOpsConfig, k8sClient *kubernetes.Clientset, namespace string) error {
     for _, svc := range config.Services {
-        // step 1 - get deployment
+        // get deployment
         deployment, err := k8sClient.AppsV1().Deployments(namespace).Get(
             context.Background(),
             svc.Name,
@@ -43,27 +43,43 @@ func Reconcile(config *FlowOpsConfig, k8sClient *kubernetes.Clientset, namespace
             continue
         }
 
-        // step 2 - compare images
-        currentImage := deployment.Spec.Template.Spec.Containers[0].Image
-        if currentImage == svc.Image {
-            log.Printf("%s is up to date", svc.Name)
-            continue
-        }
+        // check image
+		currentImage := deployment.Spec.Template.Spec.Containers[0].Image
+		if currentImage != svc.Image {
+			log.Printf("updating image %s: %s -> %s", svc.Name, currentImage, svc.Image)
+			deployment.Spec.Template.Spec.Containers[0].Image = svc.Image
+			_, err = k8sClient.AppsV1().Deployments(namespace).Update(
+				context.Background(),
+				deployment,
+				metav1.UpdateOptions{},
+			)
+			if err != nil {
+				log.Printf("failed to update image %s: %v", svc.Name, err)
+				continue
+			}
+			log.Printf("successfully updated image %s", svc.Name)
+		} else {
+			log.Printf("%s image is up to date", svc.Name)
+		}
 
-        // step 3 - update
-        log.Printf("updating %s: %s -> %s", svc.Name, currentImage, svc.Image)
-        deployment.Spec.Template.Spec.Containers[0].Image = svc.Image
-        _, err = k8sClient.AppsV1().Deployments(namespace).Update(
-            context.Background(),
-            deployment,
-            metav1.UpdateOptions{},
-        )
-        if err != nil {
-            log.Printf("failed to update deployment %s: %v", svc.Name, err)
-            continue
-        }
-
-        log.Printf("successfully updated %s", svc.Name)
+		// check replicas
+		currentReplicas := *deployment.Spec.Replicas
+		if currentReplicas != svc.Replicas {
+			log.Printf("scaling %s: %d -> %d replicas", svc.Name, currentReplicas, svc.Replicas)
+			deployment.Spec.Replicas = &svc.Replicas
+			_, err = k8sClient.AppsV1().Deployments(namespace).Update(
+				context.Background(),
+				deployment,
+				metav1.UpdateOptions{},
+			)
+			if err != nil {
+				log.Printf("failed to scale deployment %s: %v", svc.Name, err)
+				continue
+			}
+			log.Printf("successfully scaled %s", svc.Name)
+		}else{
+			log.Printf("%s replicas are up to date", svc.Name)
+		}
     }
     return nil
 }
