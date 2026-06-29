@@ -29,6 +29,14 @@ func main() {
 		log.Fatalf("failed to create k8s client: %v", err)
 	}
 
+	// create store and API server
+    store := &Store{}
+    api := NewAPIServer(k8sClient, store, "default")
+
+    // start API server in background
+    go api.Start("8081")
+
+    // reconciler loop
 	for {
 		log.Println("reconciling...")
 		
@@ -49,12 +57,11 @@ func main() {
 		}
 
 		// reconcile
-		err = Reconcile(config, k8sClient, "default")
+		err = Reconcile(config, k8sClient, "default", store)
 		if err != nil {
 			log.Printf("failed to reconcile: %v", err)
 		}
 		
 		time.Sleep(30 * time.Second)
 	}
-
 }

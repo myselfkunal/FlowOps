@@ -4,6 +4,7 @@ import (
     "context"
     "fmt"
     "log"
+	"time"
     "gopkg.in/yaml.v3"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/client-go/kubernetes"
@@ -30,7 +31,7 @@ func ParseConfig(rawYAML string) (*FlowOpsConfig, error) {
 }
 
 // compares config against cluster and applies changes
-func Reconcile(config *FlowOpsConfig, k8sClient *kubernetes.Clientset, namespace string) error {
+func Reconcile(config *FlowOpsConfig, k8sClient *kubernetes.Clientset, namespace string, store *Store) error {
     for _, svc := range config.Services {
         // get deployment
         deployment, err := k8sClient.AppsV1().Deployments(namespace).Get(
@@ -58,6 +59,13 @@ func Reconcile(config *FlowOpsConfig, k8sClient *kubernetes.Clientset, namespace
 				continue
 			}
 			log.Printf("successfully updated image %s", svc.Name)
+			store.AddEvent(ReconcileEvent{
+				Timestamp:   time.Now(),
+				ServiceName: svc.Name,
+				WhatChanged: "image",
+				OldValue:    currentImage,
+				NewValue:    svc.Image,
+			})
 		} else {
 			log.Printf("%s image is up to date", svc.Name)
 		}
@@ -77,6 +85,13 @@ func Reconcile(config *FlowOpsConfig, k8sClient *kubernetes.Clientset, namespace
 				continue
 			}
 			log.Printf("successfully scaled %s", svc.Name)
+			store.AddEvent(ReconcileEvent{
+				Timestamp:   time.Now(),
+				ServiceName: svc.Name,
+				WhatChanged: "replicas",
+				OldValue:    fmt.Sprintf("%d", currentReplicas),
+				NewValue:    fmt.Sprintf("%d", svc.Replicas),
+			})
 		}else{
 			log.Printf("%s replicas are up to date", svc.Name)
 		}
