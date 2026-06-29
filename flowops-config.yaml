@@ -1,17 +1,16 @@
 services:
   - name: payments
     image: flowops-payments:latest
-    replicas: 10
+    replicas: 1
   - name: auth
     image: flowops-auth:latest
-    replicas: 10
+    replicas: 1
   - name: orders
     image: flowops-orders:latest
-    replicas: 10
+    replicas: 1
   - name: notifications
     image: flowops-notifications:latest
-    replicas: 10
+    replicas: 1
   - name: api-gateway
     image: flowops-api-gateway:latest
-    replicas: 10
-    
+    replicas: 1
