@@ -3,11 +3,15 @@ package main
 import (
 	"net/http"
 	"fmt"
+	"time"
 	"io"
 )
 
 func FetchConfig(repoOwner, repoName, filePath string) (string, error) {
-	url := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/master/%s", repoOwner, repoName, filePath)
+	url := fmt.Sprintf(
+    	"https://raw.githubusercontent.com/%s/%s/master/%s?t=%d",
+    	repoOwner, repoName, filePath, time.Now().Unix(),
+	)
 	
 	// Making the HTTP request
 	resp, err := http.Get(url)
